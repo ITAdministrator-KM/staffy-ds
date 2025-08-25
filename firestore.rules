@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Staff profiles - users can read/write their own profile
+    match /staffProfiles/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Leave requests
+    match /leaveRequests/{requestId} {
+      // Users can create leave requests
+      allow create: if request.auth != null;
+      
+      // Users can read their own requests
+      // Division CC/Head/HOD can read requests they need to approve
+      allow read: if request.auth != null && (
+        resource.data.staffId == request.auth.uid ||
+        resource.data.recommendOfficer == request.auth.uid ||
+        resource.data.approveOfficer == request.auth.uid
+      );
+      
+      // Only allow updates to status by authorized officers
+      allow update: if request.auth != null && (
+        (resource.data.recommendOfficer == request.auth.uid && 
+         request.resource.data.status == 'recommended') ||
+        (resource.data.approveOfficer == request.auth.uid && 
+         request.resource.data.status == 'approved')
+      );
+    }
+  }
+}

@@ -10,9 +10,16 @@ import {
   Building2,
   ClipboardList,
   UserCheck,
-  FolderOpen
+  FolderOpen,
+  LogOut,
+  UserCircle
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
+import { useAuth } from "@/contexts/AuthContext"
+import { useAuthActions } from "@/hooks/useAuthActions"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Separator } from "@/components/ui/separator"
 
 import {
   Sidebar,
@@ -28,9 +35,6 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar"
-
-// Mock user role - in real app this would come from auth context
-const userRole = "admin" // "staff", "division_cc", "division_head", "admin"
 
 const staffItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
@@ -75,6 +79,11 @@ export function AppSidebar() {
   const collapsed = state === "collapsed"
   const location = useLocation()
   const currentPath = location.pathname
+  const { currentUser } = useAuth()
+  const { logOut } = useAuthActions()
+  
+  // Mock user role - in real app this would come from currentUser claims
+  const userRole = "admin" // TODO: Get from currentUser custom claims
   const menuItems = getMenuItems(userRole)
 
   const isActive = (path: string) => currentPath === path
@@ -82,6 +91,23 @@ export function AppSidebar() {
     isActive 
       ? "bg-sidebar-accent text-sidebar-primary font-medium border-l-2 border-sidebar-primary" 
       : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
+
+  const handleSignOut = async () => {
+    try {
+      await logOut()
+    } catch (error) {
+      console.error("Sign out error:", error)
+    }
+  }
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
 
   return (
     <Sidebar
@@ -96,7 +122,9 @@ export function AppSidebar() {
           {!collapsed && (
             <div>
               <h2 className="text-lg font-bold text-sidebar-foreground">DStaff</h2>
-              <p className="text-xs text-sidebar-foreground/70 capitalize">{userRole.replace('_', ' ')}</p>
+              <p className="text-xs text-sidebar-foreground/70">
+                Welcome, {currentUser?.displayName?.split(' ')[0] || 'User'}
+              </p>
             </div>
           )}
         </div>
@@ -122,8 +150,40 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4">
-        <SidebarTrigger className="self-center" />
+      <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
+        {!collapsed && (
+          <>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={currentUser?.photoURL || ""} alt="Profile" />
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                  {currentUser?.displayName ? getInitials(currentUser.displayName) : <UserCircle className="h-4 w-4" />}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate text-sidebar-foreground">
+                  {currentUser?.displayName || "User"}
+                </p>
+                <p className="text-xs text-sidebar-foreground/70 truncate">
+                  {currentUser?.email}
+                </p>
+              </div>
+            </div>
+            <Separator />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full justify-start gap-2 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
+          </>
+        )}
+        <div className="flex justify-center">
+          <SidebarTrigger />
+        </div>
       </SidebarFooter>
     </Sidebar>
   )

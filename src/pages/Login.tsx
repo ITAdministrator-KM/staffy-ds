@@ -1,9 +1,12 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuthActions } from "@/hooks/useAuthActions"
 import { 
   Building2, 
   Mail, 
@@ -12,22 +15,40 @@ import {
   EyeOff,
   Shield,
   Users,
-  Calendar
+  Calendar,
+  AlertCircle
 } from "lucide-react"
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     email: "",
     password: ""
   })
+  
+  const { logIn } = useAuthActions()
+  const navigate = useNavigate()
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In real app, this would authenticate with backend
-    console.log("Login attempt:", formData)
-    // Redirect to dashboard
-    window.location.href = "/dashboard"
+    setError("")
+    setLoading(true)
+    
+    try {
+      const { success, error } = await logIn(formData.email, formData.password)
+      
+      if (success) {
+        navigate("/dashboard")
+      } else {
+        setError(error || "Failed to sign in")
+      }
+    } catch (err) {
+      setError("An unexpected error occurred")
+    }
+    
+    setLoading(false)
   }
 
   const features = [
@@ -92,6 +113,13 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
@@ -105,6 +133,7 @@ const Login = () => {
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     className="pl-10"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -121,11 +150,13 @@ const Login = () => {
                     onChange={(e) => setFormData({...formData, password: e.target.value})}
                     className="pl-10 pr-10"
                     required
+                    disabled={loading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                    disabled={loading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -142,12 +173,13 @@ const Login = () => {
                     id="remember"
                     type="checkbox"
                     className="h-4 w-4 rounded border-gray-300"
+                    disabled={loading}
                   />
                   <Label htmlFor="remember" className="text-sm">
                     Remember me
                   </Label>
                 </div>
-                <Button variant="link" className="p-0 text-sm">
+                <Button variant="link" className="p-0 text-sm" disabled={loading}>
                   Forgot password?
                 </Button>
               </div>
@@ -156,8 +188,9 @@ const Login = () => {
                 type="submit" 
                 className="w-full bg-gradient-to-r from-primary to-secondary text-white"
                 size="lg"
+                disabled={loading}
               >
-                Sign In
+                {loading ? "Signing In..." : "Sign In"}
               </Button>
             </form>
 

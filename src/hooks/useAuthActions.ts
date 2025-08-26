@@ -1,65 +1,45 @@
-import { 
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-  signOut,
-  updateProfile,
-  User
-} from 'firebase/auth';
-import { auth } from '../services/firebase';
-
-interface AuthResult {
-  success: boolean;
-  user?: User;
-  error?: string;
-}
-
-interface SimpleResult {
-  success: boolean;
-  error?: string;
-}
+import { firebaseAuth, AuthResult, SimpleResult } from '../services/firebaseAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useAuthActions = () => {
-  const signUp = async (email: string, password: string, displayName: string): Promise<AuthResult> => {
-    try {
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(user, { displayName });
-      return { success: true, user };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+  const { refreshUserProfile } = useAuth();
+
+  const signUp = async (email: string, password: string, displayName: string, role?: string): Promise<AuthResult> => {
+    const result = await firebaseAuth.signUpWithEmail(email, password, displayName, role);
+    if (result.success) {
+      await refreshUserProfile();
     }
+    return result;
   };
 
   const logIn = async (email: string, password: string): Promise<AuthResult> => {
-    try {
-      const { user } = await signInWithEmailAndPassword(auth, email, password);
-      return { success: true, user };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    const result = await firebaseAuth.signInWithEmail(email, password);
+    if (result.success) {
+      await refreshUserProfile();
     }
+    return result;
+  };
+
+  const signInWithGoogle = async (): Promise<AuthResult> => {
+    const result = await firebaseAuth.signInWithGoogle();
+    if (result.success) {
+      await refreshUserProfile();
+    }
+    return result;
   };
 
   const resetPassword = async (email: string): Promise<SimpleResult> => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
+    return await firebaseAuth.resetPassword(email);
   };
 
   const logOut = async (): Promise<SimpleResult> => {
-    try {
-      await signOut(auth);
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
+    return await firebaseAuth.signOut();
   };
 
   return {
     signUp,
     logIn,
+    signInWithGoogle,
     resetPassword,
     logOut
   };
